@@ -16,13 +16,57 @@ const provinces = [
   "United States",
 ];
 
+// Orders are emailed here. Change this to your real studio inbox.
+const STUDIO_ORDER_EMAIL = "novara2734@gmail.com";
+
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, subtotal } = useCart();
   const [province, setProvince] = useState(provinces[0]);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [error, setError] = useState("");
 
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
   const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
   const estimatedShipping = subtotal === 0 ? 0 : remaining === 0 ? 0 : province === "United States" ? 35 : 18;
+  const total = subtotal + estimatedShipping;
+
+  const handleCheckout = () => {
+    if (!name.trim() || !email.trim() || !address.trim()) {
+      setError("Please fill in your name, email, and shipping address.");
+      return;
+    }
+    setError("");
+
+    const lines = items.map((item) => {
+      const framingText = item.framing ? ` + ${item.framing.label}` : "";
+      const lineTotal = formatCAD((item.unitPrice + (item.framing?.price ?? 0)) * item.quantity);
+      return `- ${item.title} (${item.variantLabel}${framingText}) x${item.quantity} — ${lineTotal}`;
+    });
+
+    const body = [
+      `New order from ${name}`,
+      "",
+      "Items:",
+      ...lines,
+      "",
+      `Subtotal: ${formatCAD(subtotal)}`,
+      `Estimated Shipping (${province}): ${estimatedShipping === 0 ? "Free" : formatCAD(estimatedShipping)}`,
+      `Estimated Total: ${formatCAD(total)}`,
+      "",
+      "Shipping to:",
+      address,
+      "",
+      `Reply-to email: ${email}`,
+    ].join("\n");
+
+    const mailto = `mailto:${STUDIO_ORDER_EMAIL}?subject=${encodeURIComponent(
+      `New Order — Novara Arts (${name})`
+    )}&body=${encodeURIComponent(body)}`;
+
+    window.location.href = mailto;
+  };
 
   return (
     <AnimatePresence>
@@ -168,15 +212,43 @@ export default function CartDrawer() {
                   </div>
                   <div className="flex justify-between font-semibold text-espresso pt-2 border-t border-espresso/10">
                     <span>Estimated Total</span>
-                    <span>{formatCAD(subtotal + estimatedShipping)}</span>
+                    <span>{formatCAD(total)}</span>
                   </div>
                 </div>
 
-                <button className="w-full rounded-full bg-espresso text-cream-light py-3.5 text-sm font-semibold hover:bg-terracotta transition-colors">
-                  Checkout
+                <div className="space-y-2.5 pt-1">
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Full name"
+                    className="w-full rounded-xl border border-espresso/20 bg-cream px-3 py-2.5 text-sm placeholder:text-espresso/40 focus:outline-none focus:border-terracotta"
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email address"
+                    className="w-full rounded-xl border border-espresso/20 bg-cream px-3 py-2.5 text-sm placeholder:text-espresso/40 focus:outline-none focus:border-terracotta"
+                  />
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Shipping address"
+                    rows={2}
+                    className="w-full rounded-xl border border-espresso/20 bg-cream px-3 py-2.5 text-sm placeholder:text-espresso/40 focus:outline-none focus:border-terracotta"
+                  />
+                  {error && <p className="text-xs text-terracotta">{error}</p>}
+                </div>
+
+                <button
+                  onClick={handleCheckout}
+                  className="w-full rounded-full bg-espresso text-cream-light py-3.5 text-sm font-semibold hover:bg-terracotta transition-colors"
+                >
+                  Send Order
                 </button>
                 <p className="text-[11px] text-center text-espresso/40">
-                  Taxes calculated at checkout. Custom framing ships with the original.
+                  This opens your email app with the order filled in. We&apos;ll reply with
+                  payment instructions to confirm.
                 </p>
               </div>
             )}
